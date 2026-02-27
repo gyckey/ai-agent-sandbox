@@ -1,1 +1,8 @@
-[]
+[
+{
+"id": "task-002-readme-usage",
+"title": "Add Quick Start usage section to README",
+"status": "todo",
+"priority": "high"
+}
+]
