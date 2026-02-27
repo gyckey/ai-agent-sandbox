@@ -1,8 +1,20 @@
 [
-{
-"id": "task-002-readme-usage",
-"title": "Add Quick Start usage section to README",
-"status": "todo",
-"priority": "high"
-}
-]
+    {
+    "id": "task-003-ci",
+    "title": "Add basic GitHub Actions CI (markdown lint + shell check)",
+    "status": "todo",
+    "priority": "high"
+    },
+    {
+    "id": "task-004-pr-template",
+    "title": "Add pull request template with DoD checklist",
+    "status": "todo",
+    "priority": "high"
+    },
+    {
+    "id": "task-005-changelog",
+    "title": "Add CHANGELOG.md and release note format",
+    "status": "todo",
+    "priority": "medium"
+    }
+    ]
