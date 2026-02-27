@@ -1,0 +1,49 @@
+name: CI
+
+on:
+pull_request:
+push:
+branches: [ main ]
+
+jobs:
+checks:
+runs-on: ubuntu-latest
+steps:
+- name: Checkout
+uses: actions/checkout@v4
+
+- name: Install tools
+run: |
+npm i -g markdownlint-cli
+sudo apt-get update
+sudo apt-get install -y shellcheck jq
+
+- name: Markdown lint (strict)
+run: markdownlint "**/*.md"
+
+- name: JSON validation (strict)
+run: |
+test -f .clawdbot/active-tasks.json
+jq empty .clawdbot/active-tasks.json
+
+- name: Shell syntax check
+run: |
+shopt -s nullglob
+files=(.clawdbot/scripts/*.sh)
+if [ ${#files[@]} -gt 0 ]; then
+for f in "${files[@]}"; do
+bash -n "$f"
+done
+else
+echo "No shell scripts found, skip."
+fi
+
+- name: Shellcheck
+run: |
+shopt -s nullglob
+files=(.clawdbot/scripts/*.sh)
+if [ ${#files[@]} -gt 0 ]; then
+shellcheck "${files[@]}"
+else
+echo "No shell scripts found, skip."
+fi
