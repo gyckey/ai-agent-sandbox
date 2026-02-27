@@ -31,3 +31,7 @@ git push -u origin feat/your-task-name
 ```bash
 gh pr create --title "docs: add quick start section" --body "Add minimal quick start instructions." --base main --head feat/your-task-name
 ```
+## Project Roadmap (Week 1)
+- [ ] Setup orchestrator structure
+- [ ] Create first PR workflow test
+- [ ] Add basic automation scripts
