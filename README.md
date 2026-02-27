@@ -1,12 +1,78 @@
 # ai-agent-sandbox
 
-Test repository for validating an AI-orchestrated development workflow.
+A beginner-friendly sandbox to validate an AI-orchestrated development workflow.
 
-## Goals
+This repository demonstrates a practical **Agent Swarm v1** loop:
 
-- Verify local agent orchestration setup.
-- Test branch/PR flow.
-- Record experiments and outcomes.
+- task queue management
+- task state transitions (`todo -> running -> done/blocked`)
+- pull request workflow
+- CI quality checks
+- Telegram notifications on completion
+
+---
+
+## What You Will Learn
+
+1. How to structure a small AI delivery system in a repo.
+2. How to run tasks through a predictable state machine.
+3. How to enforce basic quality gates before merge.
+4. How to receive automated task completion notifications.
+
+---
+
+## Prerequisites
+
+Install and verify these tools first:
+
+- `git`
+- `gh` (GitHub CLI)
+- `bash`
+- `python3`
+- `jq`
+- `node` + `npm` (for markdown lint in CI)
+
+Quick checks:
+
+```bash
+git --version
+gh --version
+python3 --version
+jq --version
+node --version
+```
+
+Authenticate GitHub CLI:
+
+```bash
+gh auth login
+```
+
+---
+
+## Repository Structure
+
+```text
+.github/
+  workflows/ci.yml                  # CI checks
+  pull_request_template.md          # PR quality template
+
+.clawdbot/
+  active-tasks.json                 # single source of truth for task states
+  prompts/
+    orchestrator-v1.md              # orchestrator instructions
+    task-template.md                # task drafting template
+  scripts/
+    update-task-status.sh           # status updater
+    run-task.sh                     # task runner (with fallback)
+    notify-done.sh                  # Telegram (or stdout) notifier
+  logs/
+
+.env.example                        # env template for Telegram
+.markdownlint.json                  # markdown lint settings
+```
+
+---
 
 ## Quick Start
 
@@ -17,34 +83,191 @@ Test repository for validating an AI-orchestrated development workflow.
    cd ai-agent-sandbox
    ```
 
-1. Create `.clawdbot` base structure.
+2. Prepare env file.
 
    ```bash
-   mkdir -p .clawdbot/{prompts,scripts,logs}
-   echo "[]" > .clawdbot/active-tasks.json
+   cp .env.example .env
    ```
 
-1. Create a feature branch and commit changes.
+3. (Optional) Configure Telegram notification values in `.env`.
+
+   ```env
+   TG_BOT_TOKEN=your_bot_token
+   TG_CHAT_ID=your_chat_id
+   ```
+
+4. Create your feature branch.
 
    ```bash
    git checkout -b feat/your-task-name
-   git add .
-   git commit -m "docs: add quick start section"
-   git push -u origin feat/your-task-name
    ```
 
-1. Open a pull request.
+---
 
-   ```bash
-   gh pr create \
-     --title "docs: add quick start section" \
-     --body "Add minimal quick start instructions." \
-     --base main \
-     --head feat/your-task-name
-   ```
+## Core Workflow (Newbie Version)
 
-## Project Roadmap (Week 1)
+### Step 1: Add or pick a task
 
-- [ ] Setup orchestrator structure.
-- [ ] Create first PR workflow test.
-- [ ] Add basic automation scripts.
+Edit `.clawdbot/active-tasks.json` and ensure each task has:
+
+- `id`
+- `title`
+- `status` (`todo` / `running` / `done` / `blocked`)
+- `priority`
+
+Example:
+
+```json
+{
+  "id": "task-003-ci",
+  "title": "Add basic GitHub Actions CI",
+  "status": "todo",
+  "priority": "high"
+}
+```
+
+### Step 2: Run a task
+
+```bash
+./.clawdbot/scripts/run-task.sh task-003-ci "Add basic GitHub Actions CI"
+```
+
+What happens:
+
+1. status becomes `running`
+2. task logic executes (currently minimal demo logic)
+3. status becomes `done` on success
+4. status becomes `blocked` on failure (trap fallback)
+5. notification is sent (Telegram if env configured)
+
+### Step 3: Commit and push
+
+```bash
+git add .
+git commit -m "feat: complete task-003-ci"
+git push -u origin feat/your-task-name
+```
+
+### Step 4: Open PR
+
+```bash
+gh pr create \
+  --title "feat: complete task-003-ci" \
+  --body "Implements task-003-ci using sandbox workflow." \
+  --base main \
+  --head feat/your-task-name
+```
+
+### Step 5: Merge and sync
+
+After checks pass and review is done:
+
+```bash
+gh pr merge --squash --delete-branch
+git checkout main
+git pull
+```
+
+---
+
+## Scripts Reference
+
+### `update-task-status.sh`
+
+Updates one task state in `.clawdbot/active-tasks.json`.
+
+```bash
+./.clawdbot/scripts/update-task-status.sh task-003-ci running
+```
+
+### `run-task.sh`
+
+Wrapper script that drives the full transition flow:
+
+- `todo/running -> running`
+- execute task logic
+- success -> `done`
+- failure -> `blocked`
+
+```bash
+./.clawdbot/scripts/run-task.sh task-003-ci "Add basic GitHub Actions CI"
+```
+
+### `notify-done.sh`
+
+Sends completion notification.
+
+- uses Telegram if `TG_BOT_TOKEN` + `TG_CHAT_ID` are present
+- otherwise prints to stdout
+
+```bash
+./.clawdbot/scripts/notify-done.sh task-003-ci "Add basic GitHub Actions CI"
+```
+
+---
+
+## CI and Quality Gates
+
+This repo uses `.github/workflows/ci.yml` to run:
+
+- Markdown lint
+- JSON validation for `active-tasks.json`
+- shell syntax check
+- shellcheck
+
+Before pushing, you can pre-check locally:
+
+```bash
+python3 -m json.tool .clawdbot/active-tasks.json > /dev/null
+bash -n .clawdbot/scripts/*.sh
+```
+
+---
+
+## Common Issues
+
+### 1) GitHub Action says invalid workflow YAML
+
+Cause: indentation or syntax error in `.github/workflows/ci.yml`.
+
+Fix: use 2-space YAML indentation and validate carefully.
+
+### 2) `Markdown lint (strict)` failed
+
+Cause: markdown formatting violations (blank lines, list style, long lines, etc.).
+
+Fix:
+
+```bash
+markdownlint "**/*.md"
+```
+
+Then fix reported files and push again.
+
+### 3) Telegram notification falls back to stdout
+
+Cause: missing or invalid `.env` values.
+
+Fix:
+
+- ensure `.env` exists at repo root
+- ensure `TG_BOT_TOKEN` and `TG_CHAT_ID` are real values
+
+---
+
+## Suggested Next Upgrades
+
+1. Replace demo task execution in `run-task.sh` with real agent calls.
+2. Persist `blocked` reason into task JSON.
+3. Add daily summary script (completed tasks, PR count, blocked count).
+4. Add role-based routing (e.g., backend/docs/UI agents).
+
+---
+
+## Project Roadmap
+
+- [x] Build minimal task queue and state transitions.
+- [x] Add CI checks and PR template.
+- [x] Add Telegram notification with `.env` auto-load.
+- [ ] Integrate real multi-agent execution.
+- [ ] Add metrics dashboard and daily report.
