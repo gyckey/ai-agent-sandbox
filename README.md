@@ -30,6 +30,7 @@ Install and verify these tools first:
 - `bash`
 - `python3`
 - `jq`
+- `shfmt`
 - `node` + `npm` (for markdown lint in CI)
 
 Quick checks:
@@ -39,6 +40,7 @@ git --version
 gh --version
 python3 --version
 jq --version
+shfmt --version
 node --version
 ```
 
@@ -66,6 +68,9 @@ gh auth login
     update-task-status.sh           # status updater
     run-task.sh                     # task runner (with fallback)
     notify-done.sh                  # Telegram (or stdout) notifier
+    format-shell.sh                 # shell formatter (writes)
+    check-shell-format.sh           # shell formatter check (diff only)
+    install-githooks.sh             # setup repo-local git hooks
   logs/
 
 .env.example                        # env template for Telegram
@@ -204,6 +209,30 @@ Sends completion notification.
 ./.clawdbot/scripts/notify-done.sh task-003-ci "Add basic GitHub Actions CI"
 ```
 
+### `format-shell.sh`
+
+Formats all shell scripts under `.clawdbot/scripts/*.sh`.
+
+```bash
+./.clawdbot/scripts/format-shell.sh
+```
+
+### `check-shell-format.sh`
+
+Checks shell formatting (CI-safe, no file rewrite).
+
+```bash
+./.clawdbot/scripts/check-shell-format.sh
+```
+
+### `install-githooks.sh`
+
+Installs repository-local hooks (`core.hooksPath=.githooks`).
+
+```bash
+./.clawdbot/scripts/install-githooks.sh
+```
+
 ---
 
 ## CI and Quality Gates
@@ -212,12 +241,16 @@ This repo uses `.github/workflows/ci.yml` to run:
 
 - Markdown lint
 - JSON validation for `active-tasks.json`
+- shell format check (`shfmt` diff)
 - shell syntax check
 - shellcheck
 
-Before pushing, you can pre-check locally:
+Recommended local setup and pre-check:
 
 ```bash
+./.clawdbot/scripts/install-githooks.sh
+./.clawdbot/scripts/format-shell.sh
+./.clawdbot/scripts/check-shell-format.sh
 python3 -m json.tool .clawdbot/active-tasks.json > /dev/null
 bash -n .clawdbot/scripts/*.sh
 ```
@@ -244,7 +277,19 @@ markdownlint "**/*.md"
 
 Then fix reported files and push again.
 
-### 3) Telegram notification falls back to stdout
+### 3) `Shell format check` failed in CI
+
+Cause: one or more `.clawdbot/scripts/*.sh` files are not shfmt-formatted.
+
+Fix:
+
+```bash
+./.clawdbot/scripts/format-shell.sh
+git add .clawdbot/scripts/*.sh
+git commit -m "chore: format shell scripts"
+```
+
+### 4) Telegram notification falls back to stdout
 
 Cause: missing or invalid `.env` values.
 
