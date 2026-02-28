@@ -19,7 +19,7 @@
     "type": "docs",
     "status": "blocked",
     "priority": "medium",
-    "updatedAt": "2026-02-28T03:31:51.660055+00:00",
-    "blockedReason": "failed after 2 attempts"
+    "updatedAt": "2026-02-28T04:29:59.465922+00:00",
+    "blockedReason": "dry-run only (no real execution)"
   }
 ]

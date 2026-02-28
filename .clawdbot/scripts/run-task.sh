@@ -11,6 +11,7 @@ ROUTING_FILE="${REPO_ROOT}/.clawdbot/agent-routing.json"
 TASK_FILE="${REPO_ROOT}/.clawdbot/active-tasks.json"
 
 # Load optional .env for TG_BOT_TOKEN / TG_CHAT_ID, etc.
+# 加载 .env（如果存在）
 ENV_FILE="${REPO_ROOT}/.env"
 if [[ -f "${ENV_FILE}" ]]; then
   set -a
@@ -44,13 +45,38 @@ select_agent() {
 }
 
 run_once() {
-  # TODO: 后续替换为真实 agent 调用
-  # 测试失败用：FORCE_FAIL=1
+  local model="${AGENT_DEFAULT_MODEL:-openai-codex/gpt-5.3-codex}"
+  local dry_run="${AGENT_DRY_RUN:-1}"
+  local mode="${AGENT_MODE:-mock}"
+
+  # 测试失败开关（保留）
   if [[ "${FORCE_FAIL:-0}" == "1" ]]; then
     return 1
   fi
-  sleep 1
-  return 0
+
+  # mock 模式：保持旧行为
+  if [[ "$mode" != "real" ]]; then
+    sleep 1
+    return 0
+  fi
+
+  # 真实执行提示词（最小版）
+  local prompt="You are implementing task ${TASK_ID}: ${TASK_TITLE}.
+  Make minimal safe changes in current repo.
+  Output concise summary of changed files and why.
+  Do not run destructive commands."
+
+  local cmd="openclaw agent --message \"$prompt\" --model \"$model\""
+
+  echo "[INFO] run command: $cmd"
+
+  if [[ "$dry_run" == "1" ]]; then
+    echo "[INFO] dry-run enabled, skip execution"
+    return 2
+  fi
+
+  # 真执行
+  eval "$cmd"
 }
 
 SELECTED_AGENT="$(select_agent)"
@@ -62,10 +88,23 @@ echo "[INFO] selected agent: ${SELECTED_AGENT}"
 attempt=1
 while true; do
   echo "[INFO] attempt ${attempt}/${MAX_RETRIES}"
+
   if run_once; then
+    rc=0
+  else
+    rc=$?
+  fi
+
+  if [[ "$rc" -eq 0 ]]; then
     "${SCRIPT_DIR}/update-task-status.sh" "${TASK_ID}" "done"
     "${SCRIPT_DIR}/notify-done.sh" "${TASK_ID}" "${TASK_TITLE}"
     echo "[INFO] task done: ${TASK_ID}"
+    exit 0
+  fi
+
+  if [[ "$rc" -eq 2 ]]; then
+    "${SCRIPT_DIR}/update-task-status.sh" "${TASK_ID}" "blocked" "dry-run only (no real execution)"
+    echo "[WARN] task blocked (dry-run): ${TASK_ID}"
     exit 0
   fi
 
