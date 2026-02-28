@@ -20,14 +20,27 @@ if [[ -f "${ENV_FILE}" ]]; then
   set +a
 fi
 
+get_task_type() {
+  if [[ ! -f "$TASK_FILE" ]]; then
+    echo ""
+    return
+  fi
+
+  jq -r --arg id "$TASK_ID" '.[] | select(.id==$id) | (.type // "")' "$TASK_FILE" |
+    head -n1 |
+    tr '[:upper:]' '[:lower:]'
+}
+
 select_agent() {
   if [[ ! -f "$ROUTING_FILE" ]] || [[ ! -f "$TASK_FILE" ]]; then
     echo "codex"
     return
   fi
 
-  task_type="$(jq -r --arg id "$TASK_ID" '.[] | select(.id==$id) | (.type // "")' "$TASK_FILE" | head -n1 | tr '[:upper:]' '[:lower:]')"
-  [[ -z "$task_type" ]] && task_type=""
+  local default_agent
+  local agent
+  local route_agent
+  local kw
 
   default_agent="$(jq -r '.default // "codex"' "$ROUTING_FILE")"
   agent="$default_agent"
@@ -35,7 +48,7 @@ select_agent() {
   while IFS= read -r row; do
     route_agent="${row%%|*}"
     kw="${row#*|}"
-    if [[ "$task_type" == *"$kw"* ]]; then
+    if [[ "$TASK_TYPE" == *"$kw"* ]]; then
       agent="$route_agent"
       break
     fi
@@ -44,8 +57,46 @@ select_agent() {
   echo "$agent"
 }
 
+select_thinking() {
+  # Allow explicit override from env when needed.
+  local explicit="${AGENT_THINKING:-}"
+  if [[ -n "$explicit" ]]; then
+    echo "$explicit"
+    return
+  fi
+
+  # Key hard problems: raise to high.
+  if [[ "$TASK_TYPE" == *"hard"* ]] ||
+    [[ "$TASK_TYPE" == *"complex"* ]] ||
+    [[ "$TASK_TYPE" == *"critical"* ]] ||
+    [[ "$TASK_TYPE" == *"migration"* ]] ||
+    [[ "$TASK_TYPE" == *"security"* ]] ||
+    [[ "$TASK_TYPE" == *"incident"* ]] ||
+    [[ "$TASK_TYPE" == *"architecture"* ]]; then
+    echo "high"
+    return
+  fi
+
+  # docs/changelog -> low
+  if [[ "$TASK_TYPE" == *"docs"* ]] || [[ "$TASK_TYPE" == *"changelog"* ]]; then
+    echo "low"
+    return
+  fi
+
+  # backend/refactor/bug -> medium
+  if [[ "$TASK_TYPE" == *"backend"* ]] ||
+    [[ "$TASK_TYPE" == *"refactor"* ]] ||
+    [[ "$TASK_TYPE" == *"api"* ]] ||
+    [[ "$TASK_TYPE" == *"bug"* ]]; then
+    echo "medium"
+    return
+  fi
+
+  # Safe default.
+  echo "low"
+}
+
 run_once() {
-  local model="${AGENT_DEFAULT_MODEL:-openai-codex/gpt-5.3-codex}"
   local dry_run="${AGENT_DRY_RUN:-1}"
   local mode="${AGENT_MODE:-mock}"
 
@@ -66,9 +117,15 @@ run_once() {
   Output concise summary of changed files and why.
   Do not run destructive commands."
 
-  local cmd="openclaw agent --message \"$prompt\" --model \"$model\""
+  local -a cmd=(
+    openclaw
+    agent
+    --agent "${SELECTED_AGENT}"
+    --message "${prompt}"
+    --thinking "${SELECTED_THINKING}"
+  )
 
-  echo "[INFO] run command: $cmd"
+  echo "[INFO] run command: ${cmd[*]}"
 
   if [[ "$dry_run" == "1" ]]; then
     echo "[INFO] dry-run enabled, skip execution"
@@ -76,12 +133,16 @@ run_once() {
   fi
 
   # 真执行
-  eval "$cmd"
+  "${cmd[@]}"
 }
 
+TASK_TYPE="$(get_task_type)"
 SELECTED_AGENT="$(select_agent)"
 echo "[INFO] start task: ${TASK_ID} - ${TASK_TITLE}"
+echo "[INFO] task type: ${TASK_TYPE:-unknown}"
 echo "[INFO] selected agent: ${SELECTED_AGENT}"
+SELECTED_THINKING="$(select_thinking)"
+echo "[INFO] selected thinking: ${SELECTED_THINKING}"
 
 "${SCRIPT_DIR}/update-task-status.sh" "${TASK_ID}" "running"
 

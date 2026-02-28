@@ -16,7 +16,7 @@ jobs:
         run: |
           npm i -g markdownlint-cli
           sudo apt-get update
-          sudo apt-get install -y shellcheck jq
+          sudo apt-get install -y shellcheck jq shfmt
 
       - name: Markdown lint (strict)
         run: markdownlint "**/*.md"
@@ -25,6 +25,9 @@ jobs:
         run: |
           test -f .clawdbot/active-tasks.json
           jq empty .clawdbot/active-tasks.json
+
+      - name: Shell format check
+        run: ./.clawdbot/scripts/check-shell-format.sh
 
       - name: Shell syntax check
         run: |

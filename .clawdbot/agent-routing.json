@@ -1,8 +1,23 @@
 {
-"default": "codex",
-"routes": [
-{ "match": ["bug", "backend", "refactor", "api"], "agent": "codex" },
-{ "match": ["docs", "readme", "changelog", "template"], "agent": "claude" },
-{ "match": ["ui", "design", "style"], "agent": "gemini" }
-]
+  "_comment": "Agent 路由规则：按任务 type 关键字匹配 agent；未命中时使用 default。",
+  "_notes": [
+    "建议路由到固定 agent id（例如 codex/claude/gemini），不要使用临时会话 id。",
+    "可按需继续扩展 routes.match 关键字。",
+    "临时都用main agent测试."
+  ],
+  "default": "main",
+  "routes": [
+    {
+      "match": ["bug", "backend", "refactor", "api"],
+      "agent": "main"
+    },
+    {
+      "match": ["docs", "readme", "changelog", "template"],
+      "agent": "main"
+    },
+    {
+      "match": ["ui", "design", "style"],
+      "agent": "main"
+    }
+  ]
 }

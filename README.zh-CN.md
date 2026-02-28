@@ -30,6 +30,7 @@
 - `bash`
 - `python3`
 - `jq`
+- `shfmt`
 - `node` + `npm`
 
 快速检查：
@@ -39,6 +40,7 @@ git --version
 gh --version
 python3 --version
 jq --version
+shfmt --version
 node --version
 ```
 
@@ -66,6 +68,9 @@ gh auth login
     update-task-status.sh           # 状态更新脚本
     run-task.sh                     # 任务执行器（含失败兜底）
     notify-done.sh                  # 完成通知（Telegram/stdout）
+    format-shell.sh                 # shell 格式化（写回文件）
+    check-shell-format.sh           # shell 格式校验（仅 diff）
+    install-githooks.sh             # 安装仓库内 git hooks
   logs/
 
 .env.example                        # 环境变量模板
@@ -202,6 +207,30 @@ git pull
 ./.clawdbot/scripts/notify-done.sh task-003-ci "Add basic GitHub Actions CI"
 ```
 
+### `format-shell.sh`
+
+格式化 `.clawdbot/scripts/*.sh` 下的所有 shell 脚本。
+
+```bash
+./.clawdbot/scripts/format-shell.sh
+```
+
+### `check-shell-format.sh`
+
+校验 shell 格式（CI 场景使用，不改写文件）。
+
+```bash
+./.clawdbot/scripts/check-shell-format.sh
+```
+
+### `install-githooks.sh`
+
+安装仓库内 hooks（设置 `core.hooksPath=.githooks`）。
+
+```bash
+./.clawdbot/scripts/install-githooks.sh
+```
+
 ---
 
 ## CI 与质量门禁
@@ -210,12 +239,16 @@ git pull
 
 - Markdown lint
 - `active-tasks.json` 格式校验
+- Shell 格式校验（`shfmt` diff）
 - Shell 语法检查
 - Shellcheck
 
-本地可先做快速预检：
+建议本地先执行安装与预检：
 
 ```bash
+./.clawdbot/scripts/install-githooks.sh
+./.clawdbot/scripts/format-shell.sh
+./.clawdbot/scripts/check-shell-format.sh
 python3 -m json.tool .clawdbot/active-tasks.json > /dev/null
 bash -n .clawdbot/scripts/*.sh
 ```
@@ -242,7 +275,19 @@ markdownlint "**/*.md"
 
 按输出修复后重新 push。
 
-### 3）通知脚本回退到 stdout
+### 3）CI 中 `Shell format check` 失败
+
+原因：存在未按 shfmt 规范格式化的 `.clawdbot/scripts/*.sh` 文件。
+
+处理：
+
+```bash
+./.clawdbot/scripts/format-shell.sh
+git add .clawdbot/scripts/*.sh
+git commit -m "chore: format shell scripts"
+```
+
+### 4）通知脚本回退到 stdout
 
 原因：`.env` 缺失或变量值不完整。
 
