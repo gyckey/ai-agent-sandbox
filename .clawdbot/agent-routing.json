@@ -1,0 +1,8 @@
+{
+"default": "codex",
+"routes": [
+{ "match": ["bug", "backend", "refactor", "api"], "agent": "codex" },
+{ "match": ["docs", "readme", "changelog", "template"], "agent": "claude" },
+{ "match": ["ui", "design", "style"], "agent": "gemini" }
+]
+}
