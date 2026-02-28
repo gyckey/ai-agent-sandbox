@@ -17,8 +17,9 @@
     "id": "task-005-changelog",
     "title": "Add CHANGELOG.md and release note format",
     "type": "docs",
-    "status": "done",
+    "status": "blocked",
     "priority": "medium",
-    "updatedAt": "2026-02-28T04:59:05.799025+00:00"
+    "updatedAt": "2026-02-28T03:31:51.660055+00:00",
+    "blockedReason": "failed after 2 attempts"
   }
 ]
