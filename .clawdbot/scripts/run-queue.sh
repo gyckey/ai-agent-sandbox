@@ -10,7 +10,7 @@ if [[ ! -f "$TASK_FILE" ]]; then
   exit 1
 fi
 
-if ! command -v jq > /dev/null 2>&1; then
+if ! command -v jq >/dev/null 2>&1; then
   echo "[ERROR] jq is required. Install with: brew install jq"
   exit 1
 fi
